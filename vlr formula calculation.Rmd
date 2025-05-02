@@ -1,0 +1,83 @@
+---
+title: "vlr formula"
+output: html_document
+date: "2025-04-30"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+```{r}
+# Fitting it on the Ratings
+data = read.csv("stage1_stats.csv")
+all_data = read.csv("all_stage1_stats.csv")
+data = all_data %>% drop_na()
+#data = data %>% drop_na()
+data$apr = data$Assists / data$Rounds
+data$adra = (data$ADR * data$Rounds - data$Kills * 150) / data$Rounds
+data$kpr = data$Kills / data$Rounds
+data$dpr = data$Deaths / data$Rounds
+data$fkpr = data$FK / data$Rounds
+data$fdpr = data$FD / data$Rounds
+data$fkdpr = data$FK.Diff / data$Rounds
+data$fk.fd = data$FK / data$FK + data$FD
+data$fkfd.diff = data$fkpr - data$fdpr
+data$fd.first = data$FD - data$FK
+data = data %>% mutate(KAST = as.numeric(gsub("%", "", KAST)) / 100)
+lm1 = lm(Rating ~ kpr + dpr + adra + fdpr + apr, data = data)
+summary(lm1)
+
+# predict(lm1, data.frame(kpr = 15/41, dpr = 31/41, fdpr = 5/41, X... = -16, apr = 11 / 41, adra = (70 * 41 - 15 * 150) / 41))
+
+# lm_good = lm(Rating ~ kpr + dpr + adra + fdpr + X... + apr, data = data)
+# summary(lm_good)
+
+# predict(lm_current, data.frame(kpr = 15/41, dpr = 31/41, fdpr = 5/41, X... = -16, apr = 11 / 41, adra = (70 * 41 - 15 * 150) / 41))
+
+# train_rows = sample(1060, 1060*0.8)
+# model_train = data[train_rows, ]
+# model_test = data[-train_rows, ]
+# 
+# lm_train = lm(Rating ~ kpr + dpr + adra + fdpr + apr, data = model_train)
+# 
+# yhats = predict(lm_train, newdata=model_test)
+# unname(yhats)
+# model_test$predictions = yhats
+# 
+# sqrt(mean((model_test$Rating - model_test$predictions)^2))
+
+#predict(lm1, data.frame(kpr = 15/22, dpr = 14/22, fdpr = 1/22, apr = 5 / 22, adra = (141 * 22 - 18 * 150) / 22))
+#plot(lm1)
+#coef(lm1)
+```
+
+```{r}
+# Fitting it on Log Odds
+percentile_data = read.csv("all_stage1_stats.csv")
+percentile_data = percentile_data %>% drop_na()
+percentile_data$percentile = pnorm(3 * (percentile_data$Rating - 1))
+percentile_data$logit_percentile <- log(percentile_data$percentile / (1 - percentile_data$percentile))
+percentile_data$apr = percentile_data$Assists / percentile_data$Rounds
+percentile_data$adra = (percentile_data$ADR * percentile_data$Rounds - percentile_data$Kills * 150) / percentile_data$Rounds
+percentile_data$kpr = percentile_data$Kills / percentile_data$Rounds
+percentile_data$dpr = percentile_data$Deaths / percentile_data$Rounds
+percentile_data$fdpr = percentile_data$FD / percentile_data$Rounds
+percentile_data$fkpr = percentile_data$FK / percentile_data$Rounds
+lm2 = lm(logit_percentile ~ apr + adra + kpr + dpr + fdpr, data = percentile_data)
+summary(lm2)
+
+lm3 = lm(percentile ~ apr + adra + kpr + dpr + fdpr, data = percentile_data)
+summary(lm3)
+
+# predict(lm2, newdata = data.frame(apr = 11/21, adra = (240.1 * 21 - 27 * 150) / 21, kpr = 27/21, dpr = 15/21, fdpr = 1/21))
+
+#predicted_logit = predict(lm2, newdata = data.frame(apr = 11/21, adra = (240.1 * 21 - 27 * 150) / 21, kpr = 27/21, dpr = 15/21, fdpr = 1/21))
+predicted_logit = predict(lm2, newdata = data.frame(kpr = 34/18, dpr = 9/18, fdpr = 1/18, apr = 4 / 18, adra = (325 * 18 - 34 * 150) / 18))
+predicted_percentile <- 1 / (1 + exp(-(predicted_logit)))
+rating <- qnorm(predicted_percentile) / 3 + 1
+print(rating)
+```
+
+
